@@ -9,6 +9,7 @@ import java.util.Map;
 import org.apache.cxf.endpoint.Client;
 import org.apache.cxf.endpoint.Endpoint;
 import org.apache.cxf.frontend.ClientProxy;
+import org.apache.cxf.ws.security.wss4j.WSS4JInInterceptor;
 import org.apache.cxf.ws.security.wss4j.WSS4JOutInterceptor;
 import org.apache.wss4j.dom.WSConstants;
 import org.apache.wss4j.dom.handler.WSHandlerConstants;
@@ -22,33 +23,66 @@ import com.atmproject.soa.ATMwsImplService;
 public class ATMclient {
 
 	public static void main(String[] args) throws MalformedURLException {
+
 		ATMwsImplService service = new ATMwsImplService(new URL("http://localhost:8080/ATMservice/ATMservice?wsdl"));
 
 		WebServiceATM ATMport = service.getATMwsImplPort();
 
-		// ------------------------------------------------------
-		// USERNAME TOKEN PROFILE INFORMATION
-		// Accedere all'oggetto client
 		Client client = ClientProxy.getClient(ATMport);
-		// dal client prendere l'endpoint
+
 		Endpoint endpoint = client.getEndpoint();
 
-		// configurazione delle proprietà dello username token profile
-		Map<String, Object> props = new HashMap<String, Object>();
-		props.put(WSHandlerConstants.ACTION, WSHandlerConstants.USERNAME_TOKEN);
-		props.put(WSHandlerConstants.USER, "pippo");
-		props.put(WSHandlerConstants.PASSWORD_TYPE, WSConstants.PW_TEXT);
-		props.put(WSHandlerConstants.PW_CALLBACK_CLASS, UTPasswordCallBack.class.getName());
+		// ------------- OUTPUT INTERCEPTOR: autenticazione, cifratura, firma, timestamp
+		// ---------------
 
-		// configurazione out interceptor (come per il lato server solo che sono di
-		// output)
-		WSS4JOutInterceptor wssOut = new WSS4JOutInterceptor(props);
-		// aggiungere l'interceptor creato alla lista di interceptor dell'endpoint
+		Map<String, Object> outProps = new HashMap<String, Object>();
+
+		// azioni che deve compiere l'input interceptor (conta l'ordine, bisogna prima
+		// firmare per poi poter cifrare anche la firma)
+		outProps.put(WSHandlerConstants.ACTION, "UsernameToken Timestamp Signature Encrypt");
+
+		// autenticazione
+		outProps.put(WSHandlerConstants.USER, "pippo");
+		outProps.put(WSHandlerConstants.PASSWORD_TYPE, WSConstants.PW_TEXT);
+		outProps.put(WSHandlerConstants.PW_CALLBACK_CLASS, UTPasswordCallBack.class.getName());
+
+		// cifratura (tramite la chiave pubblica del server presente anche nel keystore
+		// del client)
+		outProps.put(WSHandlerConstants.ENC_PROP_FILE, "etc/clientKeystore.properties");
+		outProps.put(WSHandlerConstants.ENCRYPTION_USER, "myservicekey");
+		// cifratura dell'elemento firma e del contenuto del soap body (la firma non la
+		// vediamo più il body si ma non il contenuto)
+		outProps.put(WSHandlerConstants.ENCRYPTION_PARTS,
+				"{Element}{http://www.w3.org/2000/09/xmldsig#}Signature;{Content}{http://schemas.xmlsoap.org/soap/envelope/}Body");
+
+		// firma (tramite chiave privata del client)
+		outProps.put(WSHandlerConstants.SIG_PROP_FILE, "etc/clientKeystore.properties");
+		outProps.put(WSHandlerConstants.SIGNATURE_USER, "myclientkey");
+		outProps.put(WSHandlerConstants.SIGNATURE_PARTS,
+				"{Element}{http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd}Timestamp;{Element}{http://schemas.xmlsoap.org/soap/envelope/}Body");
+
+		outProps.put("timeToLive", "30");
+
+		WSS4JOutInterceptor wssOut = new WSS4JOutInterceptor(outProps);
 		endpoint.getOutInterceptors().add(wssOut);
 
-		// -------------------------------------------------------
-		// ora che posso accedere alle operazioni devo indicare quali stub usano
-		// -----------------GET
+		// ------------ INPUT INTERCEPTOR: decifratura, verifica firma, timestamp
+		// ----------------
+		HashMap<String, Object> inProps = new HashMap<>();
+
+		inProps.put(WSHandlerConstants.ACTION, "Encrypt Signature Timestamp");
+
+		// decifratura
+		inProps.put(WSHandlerConstants.DEC_PROP_FILE, "etc/clientKeystore.properties");
+		inProps.put(WSHandlerConstants.PW_CALLBACK_CLASS, UTPasswordCallBack.class.getName());
+
+		// verifica firma
+		inProps.put(WSHandlerConstants.SIG_PROP_FILE, "etc/clientKeystore.properties");
+
+		WSS4JInInterceptor wssIn = new WSS4JInInterceptor(inProps);
+		endpoint.getInInterceptors().add(wssIn);
+
+		// ---------------------------- SCRIPT CLIENT ---------------------------
 
 		PrelievoRequestSchema request = new PrelievoRequestSchema();
 
