@@ -12,6 +12,15 @@
         <soap:body use="literal"/>
       </wsdl:output>
     </wsdl:operation>
+        <wsdl:operation name="versamento">
+      <soap:operation soapAction="" style="document"/>
+      <wsdl:input name="versamento">
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output name="versamentoResponse">
+        <soap:body use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
   </wsdl:binding>
   <wsdl:service name="ATMwsImplService">
     <wsdl:port binding="tns:ATMwsImplServiceSoapBinding" name="ATMwsImplPort">

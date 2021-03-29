@@ -16,6 +16,8 @@ import org.apache.wss4j.dom.handler.WSHandlerConstants;
 import org.example.webserviceatm.CartaDebito;
 import org.example.webserviceatm.PrelievoRequestSchema;
 import org.example.webserviceatm.PrelievoResponseSchema;
+import org.example.webserviceatm.VersamentoRequestSchema;
+import org.example.webserviceatm.VersamentoResponseSchema;
 import org.example.webserviceatm.WebServiceATM;
 
 import com.atmproject.soa.ATMwsImplService;
@@ -99,6 +101,18 @@ public class ATMclient {
 		PrelievoResponseSchema response = ATMport.prelievo(request);
 
 		System.out.println(response.isResult());
+	
+		
+		
+		VersamentoRequestSchema requestone = new VersamentoRequestSchema();
+
+		requestone.setCartaDebito(cartaDebito);
+		requestone.setPin(BigInteger.valueOf(0000));
+		requestone.setImporto(BigInteger.valueOf(1000000));
+
+		VersamentoResponseSchema responseone = ATMport.versamento(requestone);
+
+		System.out.println(responseone.isResult());
 
 	}
 
