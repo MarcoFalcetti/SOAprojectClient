@@ -5,6 +5,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
+import javax.xml.ws.soap.AddressingFeature;
 
 import org.apache.cxf.endpoint.Client;
 import org.apache.cxf.endpoint.Endpoint;
@@ -28,7 +29,7 @@ public class ATMclient {
 
 		ATMwsImplService service = new ATMwsImplService(new URL("http://localhost:8080/ATMservice/ATMservice?wsdl"));
 
-		WebServiceATM ATMport = service.getATMwsImplPort();
+		WebServiceATM ATMport = service.getATMwsImplPort(new AddressingFeature(true));
 
 		Client client = ClientProxy.getClient(ATMport);
 
